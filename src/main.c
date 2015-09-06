@@ -8,21 +8,26 @@
 int main()
 {
 	int lastTicks;
-	float rot;
+	float rotX, rotY;
 	
 	openWindow(800, 600);
 	initScreen(200, 150);
-	setOrtho(-4, -3, 8, 6, -8, 16);
+	//setOrtho(-4, -3, 8, 6, 0.1f, 100.0f);
+	setPersp(55.0f, 0.1f, 100.0f);
 	
 	lastTicks = SDL_GetTicks();
-	rot = 0.0f;
-	while (SDL_GetTicks() < 3000) {
+	//rotX = 0.0f;
+	//rotY = -10.0f;
+	rotX = -45.0f;
+	rotY = -45.0f;
+	while (SDL_GetTicks() < 10000) {
 		clearScreen();
 		
-		//drawLine(-2, -2, 1, 2, 2, 2);
-		drawCube(0, 0, 4, 3, rot);
+		drawCube(0, 0, 6, 
+		         3, 
+		         rotX, rotY);
 		
-		rot += (float)(SDL_GetTicks() - lastTicks) / 1000.0f * 90.0f;
+		//rotY -= (float)(SDL_GetTicks() - lastTicks) / 1000.0f * 90.0f;
 		lastTicks = SDL_GetTicks();
 		
 		renderScreen();
