@@ -60,6 +60,13 @@ void renderScreen()
 
 void setScreenPixel(int x, int y)
 {
+	y = _screenHeight - 1 - y;
+
+	if (x < 0) return;
+	if (y < 0) return;
+	if (x >= _screenWidth)  return;
+	if (y >= _screenHeight) return;
+	
 	int i = (y * _screenWidth + x) * 3;
 	_screenPixels[i + 0] = 0;
 	_screenPixels[i + 1] = 0;
@@ -69,6 +76,13 @@ void setScreenPixel(int x, int y)
 
 int getScreenPixel(int x, int y)
 {
+	y = _screenHeight - 1 - y;
+
+	if (x < 0) return 0;
+	if (y < 0) return 0;
+	if (x >= _screenWidth)  return 0;
+	if (y >= _screenHeight) return 0;
+
 	int i = (y * _screenWidth + x) * 3;
 	if (_screenPixels[i + 0] ||
 	    _screenPixels[i + 1] ||
