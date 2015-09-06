@@ -13,14 +13,17 @@ extern SDL_Window* _sdlWindow;
 
 void initScreen(int width, int height)
 {
+	// Setup the pixel data
 	_screenWidth   = width;
 	_screenHeight  = height;
 	_screenPixels  = (unsigned char*)malloc(width * height * 4);
 	
+	// Initial the pixels
+	clearScreen();
+	
 	// Disable any GL modifiers that are on by default
 	glDisable(GL_DITHER);
 	glDisable(GL_MULTISAMPLE);
-	
 }
 
 
@@ -35,24 +38,20 @@ void killScreen()
 
 void clearScreen()
 {
-	int i;
-	for (i = 0; i < _screenWidth * _screenHeight; i++) {
-		_screenPixels[i * 4 + 0] = 255;
-		_screenPixels[i * 4 + 1] = 255;
-		_screenPixels[i * 4 + 2] = 255;
-		_screenPixels[i * 4 + 3] = 255;
-	}
+	memset(_screenPixels, 255, _screenWidth * _screenHeight * 4);
 }
 
 
 void renderScreen()
 {
+	// Draw
 	glDrawPixels(_screenWidth, 
 	             _screenHeight, 
 	             GL_RGBA, 
 	             GL_UNSIGNED_BYTE, 
 	             _screenPixels);
 	
+	// Present the screen
 	SDL_GL_SwapWindow(_sdlWindow);
 }
 
