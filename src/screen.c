@@ -1,14 +1,14 @@
 #include "screen.h"
 
 #include <SDL.h>
+#include <SDL_opengl.h>
 
 
-int          _screenWidth = 0;
-int          _screenHeight = 0;
-char*        _screenPixels = 0;
-SDL_Texture* _screenTexture = 0;
+int   _screenWidth = 0;
+int   _screenHeight = 0;
+char* _screenPixels = 0;
 
-extern SDL_Renderer* _sdlRenderer;
+extern SDL_Window* _sdlWindow;
 
 
 void initScreen(int width, int height)
@@ -16,21 +16,15 @@ void initScreen(int width, int height)
 	_screenWidth   = width;
 	_screenHeight  = height;
 	_screenPixels  = (char*)malloc(width * height * 3);
-	_screenTexture = SDL_CreateTexture(_sdlRenderer,
-	                                   SDL_PIXELFORMAT_RGB24,
-	                                   SDL_TEXTUREACCESS_STREAMING,
-	                                   width, height);
 }
 
 
 void killScreen()
 {
-	SDL_DestroyTexture(_screenTexture);
 	free(_screenPixels);
-	_screenWidth   = 0;
-	_screenHeight  = 0;
-	_screenPixels  = 0;
-	_screenTexture = 0;
+	_screenWidth  = 0;
+	_screenHeight = 0;
+	_screenPixels = 0;
 }
 
 
@@ -47,14 +41,13 @@ void clearScreen()
 
 void renderScreen()
 {
-	SDL_UpdateTexture(_screenTexture,
-	                  0, 
-	                  _screenPixels,
-	                  _screenWidth * sizeof(char) * 3);
-	                  
-	SDL_RenderClear(_sdlRenderer);
-	SDL_RenderCopy(_sdlRenderer, _screenTexture, 0, 0);
-	SDL_RenderPresent(_sdlRenderer);
+	glDrawPixels(_screenWidth, 
+	             _screenHeight, 
+	             GL_RGB, 
+	             GL_UNSIGNED_BYTE, 
+	             _screenPixels);
+	
+	SDL_GL_SwapWindow(_sdlWindow);
 }
 
 
