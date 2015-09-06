@@ -11,7 +11,7 @@ project "rast"
   language       "C"
   files        { "src/**.c" }
   includedirs  { "src" }
-  links        {  }
+  links        { "GL" }
   linkoptions  { "`sdl2-config --static-libs`" }
   buildoptions { "-Wall", "`sdl2-config --cflags`" }
   flags        { "Symbols" }
