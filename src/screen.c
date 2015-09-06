@@ -16,6 +16,11 @@ void initScreen(int width, int height)
 	_screenWidth   = width;
 	_screenHeight  = height;
 	_screenPixels  = (unsigned char*)malloc(width * height * 4);
+	
+	// Disable any GL modifiers that are on by default
+	glDisable(GL_DITHER);
+	glDisable(GL_MULTISAMPLE);
+	
 }
 
 
