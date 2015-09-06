@@ -32,7 +32,12 @@ void setOrtho(float x, float y, float w, float h, float near, float far)
 
 void drawLine(float x1, float y1, float z1, float x2, float y2, float z2)
 {
-	// Offset the coordinates
+	int px, py, px1, py1, px2, py2;
+	int   dir;
+	float slope;
+	float z;
+
+	// Translate the coordinates
 	x1 -= _projMatrix.x;
 	x2 -= _projMatrix.x;
 	y1 -= _projMatrix.y;
@@ -48,17 +53,40 @@ void drawLine(float x1, float y1, float z1, float x2, float y2, float z2)
 	z1 /= _projMatrix.far;
 	z2 /= _projMatrix.far;
 	
-	// Convert coords to pixels
-	x1 *= (float)_screenWidth;
-	x2 *= (float)_screenWidth;
-	y1 *= (float)_screenHeight;
-	y2 *= (float)_screenHeight;
+	// Cull the line if it's clearly out of the z planes
+	if (z1 < 0 && z2 < 0)
+		return;
+	if (z1 > 1 && z2 > 1)
+		return;
 	
-	// Render the line vertices
-	if (z1 >= 0 && z1 <= 1)
-		setScreenPixel(x1, y1);
-	if (z2 >= 0 && z2 <= 1)
-		setScreenPixel(x2, y2);
+	// Convert coords to pixels
+	px1 = (int)floor(x1 * (float)_screenWidth);
+	py1 = (int)floor(y1 * (float)_screenHeight);
+	px2 = (int)floor(x2 * (float)_screenWidth);
+	py2 = (int)floor(y2 * (float)_screenHeight);
+	
+	// Render the pixels
+	px = px1;
+	py = py1;
+	if (px1 - px2 == 0) { // Edge-case: Vertical line
+		dir = (py1 < py2 ? 1 : -1);
+		while (1) {
+			setScreenPixel(px, py);
+			if (py == py2)
+				return;
+			py += dir;
+		}
+	} else {
+		dir   = (px1 < px2 ? 1 : -1);
+		slope = (float)(py2 - py1) / (float)(px2 - px1);
+		while (1) {
+			setScreenPixel(px, py);
+			if (px == px2 && py == py2)
+				return;
+			px += dir;
+			py = py1 + (int)(slope * (float)(px - px1));
+		}
+	}
 }
 
 
