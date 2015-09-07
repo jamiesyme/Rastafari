@@ -14,4 +14,3 @@ project "rast"
   links        { "GL" }
   linkoptions  { "`sdl2-config --static-libs`" }
   buildoptions { "-Wall", "`sdl2-config --cflags`" }
-  flags        { "Symbols" }
