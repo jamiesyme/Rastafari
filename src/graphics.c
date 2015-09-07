@@ -1,5 +1,6 @@
 #include "graphics.h"
 #include "screen.h"
+#include <stdlib.h>
 #include <math.h>
 
 
@@ -29,6 +30,14 @@ extern int _screenWidth;
 extern int _screenHeight;
 
 
+void swap(int* a, int* b)
+{
+	int temp = *a;
+	*a = *b;
+	*b = temp;
+}
+
+
 void setOrtho(float x, float y, float w, float h, float near, float far)
 {
 	_orthoProj.x    = x;
@@ -43,11 +52,9 @@ void setOrtho(float x, float y, float w, float h, float near, float far)
 
 void setPersp(float vFov, float near, float far)
 {
-	float hFov;
-	vFov /= 2.0f;
-	hFov  = (float)_screenWidth / (float)_screenHeight;// * vFov;
-	_perspProj.vFovTan = tan(vFov * 3.141592654f / 180.0f);
-	_perspProj.hFovTan = _perspProj.vFovTan * hFov;//tan(hFov * 3.141592654f / 180.0f);
+	float aspect = (float)_screenWidth / (float)_screenHeight;
+	_perspProj.vFovTan = tan(vFov / 2.0f * 3.141592654f / 180.0f);
+	_perspProj.hFovTan = _perspProj.vFovTan * aspect;
 	_perspProj.near    = near;
 	_perspProj.far     = far;
 	_projMode          = 2;
@@ -56,10 +63,8 @@ void setPersp(float vFov, float near, float far)
 
 void drawLine(float x1, float y1, float z1, float x2, float y2, float z2)
 {
-	int px, py, npy, px1, py1, px2, py2;
-	int dir, i;
-	float slopeY, slopeZ;
-	float z;
+	int px1, py1, px2, py2;
+	float slopeX, slopeY;
 
 	// Apply projection matrix
 	if (_projMode == 1) {
@@ -101,68 +106,62 @@ void drawLine(float x1, float y1, float z1, float x2, float y2, float z2)
 	px2 = (int)floor(x2 * (float)_screenWidth);
 	py2 = (int)floor(y2 * (float)_screenHeight);
 	
-	// Prepare for rendering
-	px = px1;
-	py = py1;
-	z  = z1;
+	// Render vertical line
+	if (px1 == px2) {
 	
-	setScreenPixel(px1, py1);
-	setScreenPixel(px2, py2);
+		if (py1 > py2)
+			swap(&py1, &py2);
+			
+		for (; py1 <= py2; py1++)
+			setScreenPixel(px1, py1);
+			
+		return;
+	}
+		
+	// Render horizontal line
+	if (py1 == py2) {
 	
-	// -- Render vertical line (edge-case)
-	if (px1 - px2 == 0) {
-		dir    = (py1 < py2 ? 1 : -1);
-		slopeZ = (z2 - z1) / (float)(py2 - py1);
-		while (1) {
-			// Draw pixel
-			if (z >= 0 && z <= 1)
-				setScreenPixel(px, py);
-				
-			// Are we done?
-			if (py == py2)
-				return;
-				
-			// Move the pixel
-			py += dir;
-			//z   = z1 + slopeZ * (float)(py - py1);
+		if (px1 > px2)
+			swap(&px1, &px2);
+			
+		for (; px1 <= px2; px1++)
+			setScreenPixel(px1, py1);
+			
+		return;
+	}
+	
+	// Render horizontal-ish line
+	if (abs(px2 - px1) > abs(py2 - py1)) {
+		
+		if (px1 > px2) {
+			swap(&px1, &px2);
+			swap(&py1, &py2);
 		}
 		
-	// -- Render line
-	} else {
-		dir    = (px1 < px2 ? 1 : -1);
 		slopeY = (float)(py2 - py1) / (float)(px2 - px1);
-		slopeZ = (z2 - z1) / (float)(px2 - px1);
-		while (1) {
-			// Draw pixels
-			npy = py1 + (int)round(slopeY * (float)(px + dir - px1));
-			if (z >= 0 && z <= 1) {
-				if (npy < py) {
-					for (i = py; i > npy; i--) {
-						setScreenPixel(px, i);
-						if (i == py2)
-							break;
-					}
-				} else if (py < npy) {
-					for (i = py; i < npy; i++) {
-						setScreenPixel(px, i);
-						if (i == py2)
-							break;
-					}
-				} else
-					setScreenPixel(px, py);
-			}
-				
-			// Are we done?
-			if (px == px2 && py == py2)
-				return;
-				
-			// Move the pixel
-			px += dir;
-			py = npy;
-			//py  = py1 + (int)round(slopeY * (float)(px - px1));
-			//z   = z1 + slopeZ * (float)(px - px1);
+		
+		for (; px1 <= px2; px1++) {
+			py1 = py2 - (int)((float)(px2 - px1) * slopeY);
+			setScreenPixel(px1, py1);
 		}
+		
+		return;
 	}
+	
+	// Render vertical-ish line
+	if (py1 > py2) {
+		swap(&py1, &py2);
+		swap(&px1, &px2);
+	}
+	
+	slopeX = (float)(px2 - px1) / (float)(py2 - py1);
+	
+	for (; py1 <= py2; py1++) {
+		px1 = px2 - (int)((float)(py2 - py1) * slopeX);
+		setScreenPixel(px1, py1);
+	}
+	
+	return;
 }
 
 
