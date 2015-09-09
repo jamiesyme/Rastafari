@@ -2,6 +2,7 @@
 #include "screen.h"
 #include <stdlib.h>
 #include <math.h>
+#include <stdio.h>
 
 
 typedef struct {
@@ -25,14 +26,26 @@ Ortho       _orthoProj;
 Perspective _perspProj;
 int         _projMode; // 1 == Ortho, 2 == Perspective
 
+float _translateX;
+float _translateY;
+float _translateZ;
+
 
 extern int _screenWidth;
 extern int _screenHeight;
 
 
-void swap(int* a, int* b)
+void swapi(int* a, int* b)
 {
 	int temp = *a;
+	*a = *b;
+	*b = temp;
+}
+
+
+void swapf(float* a, float* b)
+{
+	float temp = *a;
 	*a = *b;
 	*b = temp;
 }
@@ -61,10 +74,38 @@ void setPersp(float vFov, float near, float far)
 }
 
 
-void drawLine(float x1, float y1, float z1, float x2, float y2, float z2)
+void loadIdentity()
+{
+	_translateX = 0.0f;
+	_translateY = 0.0f;
+	_translateZ = 0.0f;
+}
+
+
+void translate(float x, float y, float z)
+{
+	_translateX += x;
+	_translateY += y;
+	_translateZ += z;
+}
+
+
+void drawLine(float x1, float y1, float z1, 
+              float x2, float y2, float z2,
+              unsigned char colR,
+              unsigned char colG,
+              unsigned char colB)
 {
 	int px1, py1, px2, py2;
-	float slopeX, slopeY;
+	float slopeX, slopeY, slopeZ;
+	
+	// Apply the camera
+	x1 -= _translateX;
+	x2 -= _translateX;
+	y1 -= _translateY;
+	y2 -= _translateY;
+	z1 -= _translateZ;
+	z2 -= _translateZ;
 
 	// Apply projection matrix
 	if (_projMode == 1) {
@@ -86,18 +127,21 @@ void drawLine(float x1, float y1, float z1, float x2, float y2, float z2)
 		
 	} else if (_projMode == 2) {
 		// Normalize the coordinates
-		x1 = x1 / (_perspProj.hFovTan * z1) * 0.5f + 0.5f;
-		x2 = x2 / (_perspProj.hFovTan * z2) * 0.5f + 0.5f;
-		y1 = y1 / (_perspProj.vFovTan * z1) * 0.5f + 0.5f;
-		y2 = y2 / (_perspProj.vFovTan * z2) * 0.5f + 0.5f;
+		x1 = x1 / (_perspProj.hFovTan * fabs(z1)) * 0.5f + 0.5f;
+		x2 = x2 / (_perspProj.hFovTan * fabs(z2)) * 0.5f + 0.5f;
+		y1 = y1 / (_perspProj.vFovTan * fabs(z1)) * 0.5f + 0.5f;
+		y2 = y2 / (_perspProj.vFovTan * fabs(z2)) * 0.5f + 0.5f;
 		z1 = (z1 - _perspProj.near) / (_perspProj.far - _perspProj.near);
 		z2 = (z2 - _perspProj.near) / (_perspProj.far - _perspProj.near);
 	}
 	
-	// Cull the line if it's clearly out of the z planes
-	if (z1 < 0 && z2 < 0)
-		return;
-	if (z1 > 1 && z2 > 1)
+	// Cull the line if it's clearly out of the planes
+	if ((x1 < 0.0f && x2 < 0.0f) ||
+	    (x1 > 1.0f && x2 > 1.0f) ||
+	    (y1 < 0.0f && y2 < 0.0f) ||
+	    (y1 > 1.0f && y2 > 1.0f) ||
+	    (z1 < 0.0f && z2 < 0.0f) ||
+	    (z1 > 1.0f && z2 > 1.0f))
 		return;
 	
 	// Convert coords to pixels
@@ -109,11 +153,18 @@ void drawLine(float x1, float y1, float z1, float x2, float y2, float z2)
 	// Render vertical line
 	if (px1 == px2) {
 	
-		if (py1 > py2)
-			swap(&py1, &py2);
+		if (py1 > py2) {
+			swapi(&py1, &py2);
+			swapf(&z1, &z2);
+		}
 			
-		for (; py1 <= py2; py1++)
-			setScreenPixel(px1, py1);
+		slopeZ = (z2 - z1) / (float)(py2 - py1);
+			
+		for (; py1 <= py2; py1++) {
+			if (z1 >= 0.0f && z1 <= 1.0f)
+				setScreenPixel(px1, py1, colR, colG, colB);
+			z1 += slopeZ;
+		}
 			
 		return;
 	}
@@ -121,11 +172,18 @@ void drawLine(float x1, float y1, float z1, float x2, float y2, float z2)
 	// Render horizontal line
 	if (py1 == py2) {
 	
-		if (px1 > px2)
-			swap(&px1, &px2);
+		if (px1 > px2) {
+			swapi(&px1, &px2);
+			swapf(&z1, &z2);
+		}
 			
-		for (; px1 <= px2; px1++)
-			setScreenPixel(px1, py1);
+		slopeZ = (z2 - z1) / (float)(px2 - px1);
+			
+		for (; px1 <= px2; px1++) {
+			if (z1 >= 0.0f && z1 <= 1.0f)
+				setScreenPixel(px1, py1, colR, colG, colB);
+			z1 += slopeZ;
+		}
 			
 		return;
 	}
@@ -134,15 +192,28 @@ void drawLine(float x1, float y1, float z1, float x2, float y2, float z2)
 	if (abs(px2 - px1) > abs(py2 - py1)) {
 		
 		if (px1 > px2) {
-			swap(&px1, &px2);
-			swap(&py1, &py2);
+			swapi(&px1, &px2);
+			swapi(&py1, &py2);
+			swapf(&z1, &z2);
 		}
 		
 		slopeY = (float)(py2 - py1) / (float)(px2 - px1);
+		slopeZ = (z2 - z1) / (float)(px2 - px1);
+		
+		y1 = (float)py1;
+		if (px1 < 0) {
+			y1 += slopeY * (float)(0 - px1);
+			z1 += slopeZ * (float)(0 - px1);
+			px1 = 0;
+		}
+		if (px2 >= _screenWidth)
+			px2 = _screenWidth - 1;
 		
 		for (; px1 <= px2; px1++) {
-			py1 = py2 - (int)((float)(px2 - px1) * slopeY);
-			setScreenPixel(px1, py1);
+			if (z1 >= 0.0f && z1 <= 1.0f)
+				setScreenPixel(px1, (int)y1, colR, colG, colB);
+			y1 += slopeY;
+			z1 += slopeZ;
 		}
 		
 		return;
@@ -150,22 +221,37 @@ void drawLine(float x1, float y1, float z1, float x2, float y2, float z2)
 	
 	// Render vertical-ish line
 	if (py1 > py2) {
-		swap(&py1, &py2);
-		swap(&px1, &px2);
+		swapi(&py1, &py2);
+		swapi(&px1, &px2);
+		swapf(&z1, &z2);
 	}
 	
 	slopeX = (float)(px2 - px1) / (float)(py2 - py1);
+	slopeZ = (z2 - z1) / (float)(py2 - py1);
+	
+	x1 = (float)px1;
+	if (py1 < 0) {
+		x1 += slopeX * (float)(0 - py1);
+		z1 += slopeZ * (float)(0 - py1);
+		py1 = 0;
+	}
+	if (py2 >= _screenHeight)
+		py2 = _screenHeight - 1;
 	
 	for (; py1 <= py2; py1++) {
-		px1 = px2 - (int)((float)(py2 - py1) * slopeX);
-		setScreenPixel(px1, py1);
+		if (z1 >= 0.0f && z1 <= 1.0f)
+			setScreenPixel((int)x1, py1, colR, colG, colB);
+		x1 += slopeX;
+		z1 += slopeZ;
 	}
 	
 	return;
 }
 
 
-void drawCube(float x, float y, float z, float s, float rx, float ry)
+void drawCube(float x, float y, float z, 
+              float s, 
+              float rx, float ry)
 {
 	float vert[8][3];
 	float xCosTheta, xSinTheta;
@@ -209,7 +295,7 @@ void drawCube(float x, float y, float z, float s, float rx, float ry)
 	vert[7][1] =  s;
 	vert[7][2] =  s;
 	
-	// Rotate the vertices 45 degrees on the y axis
+	// Rotate the vertices ry degrees on the y axis
 	yCosTheta = cos(ry * 3.141592654f / 180.0f);
 	ySinTheta = sin(ry * 3.141592654f / 180.0f);
 	for (i = 0; i < 8; i++) {
@@ -219,7 +305,7 @@ void drawCube(float x, float y, float z, float s, float rx, float ry)
 		vert[i][2] = tmpZ * yCosTheta - tmpX * ySinTheta;
 	}
 	
-	// Rotate the vertices 45 degrees on the x axis
+	// Rotate the vertices rx degrees on the x axis
 	xCosTheta = cos(rx * 3.141592654f / 180.0f);
 	xSinTheta = sin(rx * 3.141592654f / 180.0f);
 	for (i = 0; i < 8; i++) {
@@ -236,21 +322,45 @@ void drawCube(float x, float y, float z, float s, float rx, float ry)
 		vert[i][2] += z;
 	}
 	
-	// Draw the lines
-	for (i = 0; i < 3; i++) {
-		drawLine(vert[i  ][0], vert[i  ][1], vert[i  ][2], 
-	           vert[i+1][0], vert[i+1][1], vert[i+1][2]);
-	}
-	for (i = 4; i < 7; i++) {
-		drawLine(vert[i  ][0], vert[i  ][1], vert[i  ][2], 
-	           vert[i+1][0], vert[i+1][1], vert[i+1][2]);
-	}
-	drawLine(vert[3][0], vert[3][1], vert[3][2],
-	         vert[0][0], vert[0][1], vert[0][2]);
-	drawLine(vert[7][0], vert[7][1], vert[7][2],
-	         vert[4][0], vert[4][1], vert[4][2]);
-	for (i = 0; i < 4; i++) {
-		drawLine(vert[i  ][0], vert[i  ][1], vert[i  ][2], 
-	           vert[i+4][0], vert[i+4][1], vert[i+4][2]);
-	}
+	// Draw the bottom square
+	drawLine(vert[0][0], vert[0][1], vert[0][2], 
+	         vert[1][0], vert[1][1], vert[1][2],
+	         0, 0, 0);
+	drawLine(vert[1][0], vert[1][1], vert[1][2], 
+	         vert[2][0], vert[2][1], vert[2][2],
+	         0, 0, 0);
+	drawLine(vert[2][0], vert[2][1], vert[2][2], 
+	         vert[3][0], vert[3][1], vert[3][2],
+	         0, 0, 0);
+	drawLine(vert[3][0], vert[3][1], vert[3][2], 
+	         vert[0][0], vert[0][1], vert[0][2],
+	         0, 0, 0);
+	
+	// Draw the top square
+	drawLine(vert[4][0], vert[4][1], vert[4][2], 
+	         vert[5][0], vert[5][1], vert[5][2],
+	         255, 0, 0);
+	drawLine(vert[5][0], vert[5][1], vert[5][2], 
+	         vert[6][0], vert[6][1], vert[6][2],
+	         255, 0, 0);
+	drawLine(vert[6][0], vert[6][1], vert[6][2], 
+	         vert[7][0], vert[7][1], vert[7][2],
+	         255, 0, 0);
+	drawLine(vert[7][0], vert[7][1], vert[7][2], 
+	         vert[4][0], vert[4][1], vert[4][2],
+	         255, 0, 0);
+	         
+	// Draw the connecting lines
+	drawLine(vert[0][0], vert[0][1], vert[0][2], 
+	         vert[4][0], vert[4][1], vert[4][2],
+	         0, 255, 255);
+	drawLine(vert[1][0], vert[1][1], vert[1][2], 
+	         vert[5][0], vert[5][1], vert[5][2],
+	         255, 255, 0);
+	drawLine(vert[2][0], vert[2][1], vert[2][2], 
+	         vert[6][0], vert[6][1], vert[6][2],
+	         255, 0, 255);
+	drawLine(vert[3][0], vert[3][1], vert[3][2], 
+	         vert[7][0], vert[7][1], vert[7][2],
+	         0, 255, 0);
 }
