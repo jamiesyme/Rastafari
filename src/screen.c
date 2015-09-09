@@ -56,35 +56,35 @@ void renderScreen()
 }
 
 
-void setScreenPixel(int x, int y)
+void setScreenPixel(int x, int y, 
+                    unsigned char cr, 
+                    unsigned char cg, 
+                    unsigned char cb)
 {
-	y = _screenHeight - 1 - y;
-
 	if (x < 0) return;
 	if (y < 0) return;
 	if (x >= _screenWidth)  return;
 	if (y >= _screenHeight) return;
 	
 	int i = (y * _screenWidth + x) * 4;
-	_screenPixels[i + 0] = 0;
-	_screenPixels[i + 1] = 0;
-	_screenPixels[i + 2] = 0;
+	_screenPixels[i + 0] = cr;
+	_screenPixels[i + 1] = cg;
+	_screenPixels[i + 2] = cb;
 }
 
 
-int getScreenPixel(int x, int y)
+void getScreenPixel(int x, int y,
+                    unsigned char* cr,
+                    unsigned char* cg,
+                    unsigned char* cb)
 {
-	y = _screenHeight - 1 - y;
-
-	if (x < 0) return 0;
-	if (y < 0) return 0;
-	if (x >= _screenWidth)  return 0;
-	if (y >= _screenHeight) return 0;
+	if (x < 0) return;
+	if (y < 0) return;
+	if (x >= _screenWidth)  return;
+	if (y >= _screenHeight) return;
 
 	int i = (y * _screenWidth + x) * 4;
-	if (_screenPixels[i + 0] ||
-	    _screenPixels[i + 1] ||
-	    _screenPixels[i + 2])
-		return 1;
-	return 0;
+	*cr = _screenPixels[i + 0];
+	*cg = _screenPixels[i + 1];
+	*cb = _screenPixels[i + 2];
 }
