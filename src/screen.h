@@ -10,7 +10,7 @@ void clearScreen();
 void renderScreen();
 
 
-void setScreenPixel(int x, int y, 
+void setScreenPixel(int x, int y, float z,
                     unsigned char cr, 
                     unsigned char cg, 
                     unsigned char cb);

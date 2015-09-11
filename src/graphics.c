@@ -153,16 +153,25 @@ void drawLine(float x1, float y1, float z1,
 	// Render vertical line
 	if (px1 == px2) {
 	
+		// Put p1 < p2
 		if (py1 > py2) {
 			swapi(&py1, &py2);
 			swapf(&z1, &z2);
 		}
-			
+		
+		// Calculate the slopes
 		slopeZ = (z2 - z1) / (float)(py2 - py1);
+		
+		// Clamp pixels to screen
+		if (py1 < 0)
+			py1 = 0;
+		if (py2 >= _screenHeight)
+			py2 = _screenHeight - 1;
 			
+		// Draw pixels
 		for (; py1 <= py2; py1++) {
 			if (z1 >= 0.0f && z1 <= 1.0f)
-				setScreenPixel(px1, py1, colR, colG, colB);
+				setScreenPixel(px1, py1, z1, colR, colG, colB);
 			z1 += slopeZ;
 		}
 			
@@ -172,16 +181,25 @@ void drawLine(float x1, float y1, float z1,
 	// Render horizontal line
 	if (py1 == py2) {
 	
+		// Put p1 < p2
 		if (px1 > px2) {
 			swapi(&px1, &px2);
 			swapf(&z1, &z2);
 		}
-			
+		
+		// Calculate the slopes	
 		slopeZ = (z2 - z1) / (float)(px2 - px1);
 			
+		// Clamp pixels to screen
+		if (px1 < 0)
+			px1 = 0;
+		if (px2 >= _screenWidth)
+			px2 = _screenWidth - 1;
+			
+		// Draw pixels
 		for (; px1 <= px2; px1++) {
 			if (z1 >= 0.0f && z1 <= 1.0f)
-				setScreenPixel(px1, py1, colR, colG, colB);
+				setScreenPixel(px1, py1, z1, colR, colG, colB);
 			z1 += slopeZ;
 		}
 			
@@ -191,15 +209,18 @@ void drawLine(float x1, float y1, float z1,
 	// Render horizontal-ish line
 	if (abs(px2 - px1) > abs(py2 - py1)) {
 		
+		// Put p1 < p2
 		if (px1 > px2) {
 			swapi(&px1, &px2);
 			swapi(&py1, &py2);
 			swapf(&z1, &z2);
 		}
 		
+		// Calculate slopes
 		slopeY = (float)(py2 - py1) / (float)(px2 - px1);
 		slopeZ = (z2 - z1) / (float)(px2 - px1);
 		
+		// Clamp pixel to screen
 		y1 = (float)py1;
 		if (px1 < 0) {
 			y1 += slopeY * (float)(0 - px1);
@@ -209,9 +230,11 @@ void drawLine(float x1, float y1, float z1,
 		if (px2 >= _screenWidth)
 			px2 = _screenWidth - 1;
 		
+		// Draw pixels
 		for (; px1 <= px2; px1++) {
-			if (z1 >= 0.0f && z1 <= 1.0f)
-				setScreenPixel(px1, (int)y1, colR, colG, colB);
+			if (z1 >= 0.0f && z1 <= 1.0f &&
+			    (int)y1 >= 0 && (int)y1 < _screenHeight)
+				setScreenPixel(px1, (int)y1, z1, colR, colG, colB);
 			y1 += slopeY;
 			z1 += slopeZ;
 		}
@@ -220,15 +243,19 @@ void drawLine(float x1, float y1, float z1,
 	}
 	
 	// Render vertical-ish line
+	
+	// Put p1 < p2
 	if (py1 > py2) {
 		swapi(&py1, &py2);
 		swapi(&px1, &px2);
 		swapf(&z1, &z2);
 	}
 	
+	// Calculate slopes
 	slopeX = (float)(px2 - px1) / (float)(py2 - py1);
 	slopeZ = (z2 - z1) / (float)(py2 - py1);
 	
+	// Clamp pixels to screen
 	x1 = (float)px1;
 	if (py1 < 0) {
 		x1 += slopeX * (float)(0 - py1);
@@ -238,9 +265,11 @@ void drawLine(float x1, float y1, float z1,
 	if (py2 >= _screenHeight)
 		py2 = _screenHeight - 1;
 	
+	// Draw pixels
 	for (; py1 <= py2; py1++) {
-		if (z1 >= 0.0f && z1 <= 1.0f)
-			setScreenPixel((int)x1, py1, colR, colG, colB);
+		if (z1 >= 0.0f && z1 <= 1.0f &&
+		    (int)x1 >= 0 && (int)x1 < _screenWidth)
+			setScreenPixel((int)x1, py1, z1, colR, colG, colB);
 		x1 += slopeX;
 		z1 += slopeZ;
 	}

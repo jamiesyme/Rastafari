@@ -1,7 +1,7 @@
 #pragma once
 
 
-void setOrtho(float x, float y, float w, float h, float near, float far);
+void setOrtho(float w, float h, float near, float far);
 
 void setPersp(float vFov, float near, float far);
 
