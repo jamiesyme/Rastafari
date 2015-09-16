@@ -6,8 +6,8 @@ typedef float* mat4_t;
 
 void mat4_identity(mat4_t mat);
 
-void mat4_perspective(mat4_t mat, float fov, float near, float far);
-void mat4_ortho(mat4_t mat, float w, float h, float near, float far);
+void mat4_perspective(mat4_t mat, float hFov, float aspect, float n, float f);
+void mat4_ortho(mat4_t mat, float w, float h, float n, float f);
                             
 void mat4_rotationX(mat4_t mat, float deg);
 void mat4_rotationY(mat4_t mat, float deg);

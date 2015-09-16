@@ -1,34 +1,14 @@
 #include "graphics.h"
 #include "screen.h"
+#include "mat4.h"
+#include "vec3.h"
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
 
 
-typedef struct {
-	float x;
-	float y;
-	float w;
-	float h;
-	float near;
-	float far;
-} Ortho;
-
-typedef struct {
-	float vFovTan;
-	float hFovTan;
-	float near;
-	float far;
-} Perspective;
-
-
-Ortho       _orthoProj;
-Perspective _perspProj;
-int         _projMode; // 1 == Ortho, 2 == Perspective
-
-float _translateX;
-float _translateY;
-float _translateZ;
+float projMat[16];
+float camMat[16];
 
 
 extern int _screenWidth;
@@ -51,42 +31,30 @@ void swapf(float* a, float* b)
 }
 
 
-void setOrtho(float x, float y, float w, float h, float near, float far)
+void setOrtho(float w, float h, float near, float far)
 {
-	_orthoProj.x    = x;
-	_orthoProj.y    = y;
-	_orthoProj.w    = w;
-	_orthoProj.h    = h;
-	_orthoProj.near = near;
-	_orthoProj.far  = far;
-	_projMode       = 1;
+	mat4_ortho(projMat, w, h, near, far);
 }
 
 
-void setPersp(float vFov, float near, float far)
+void setPersp(float hFov, float near, float far)
 {
-	float aspect = (float)_screenWidth / (float)_screenHeight;
-	_perspProj.vFovTan = tan(vFov / 2.0f * 3.141592654f / 180.0f);
-	_perspProj.hFovTan = _perspProj.vFovTan * aspect;
-	_perspProj.near    = near;
-	_perspProj.far     = far;
-	_projMode          = 2;
+	float aspectRatio = (float)_screenHeight / (float)_screenWidth;
+	mat4_perspective(projMat, hFov, aspectRatio, near, far);
 }
 
 
 void loadIdentity()
 {
-	_translateX = 0.0f;
-	_translateY = 0.0f;
-	_translateZ = 0.0f;
+	mat4_identity(camMat);
 }
 
 
 void translate(float x, float y, float z)
 {
-	_translateX += x;
-	_translateY += y;
-	_translateZ += z;
+	// Negate the params because this camera should move all the objects in the
+	// world around it.
+	mat4_translate(camMat, -x, -y, -z);
 }
 
 
@@ -98,57 +66,48 @@ void drawLine(float x1, float y1, float z1,
 {
 	int px1, py1, px2, py2;
 	float slopeX, slopeY, slopeZ;
+	float v1[3], v2[3];
+	
+	// Set the vectors
+	vec3_set(v1, x1, y1, z1);
+	vec3_set(v2, x2, y2, z2);
 	
 	// Apply the camera
-	x1 -= _translateX;
-	x2 -= _translateX;
-	y1 -= _translateY;
-	y2 -= _translateY;
-	z1 -= _translateZ;
-	z2 -= _translateZ;
-
-	// Apply projection matrix
-	if (_projMode == 1) {
-		// Translate the coordinates
-		x1 -= _orthoProj.x;
-		x2 -= _orthoProj.x;
-		y1 -= _orthoProj.y;
-		y2 -= _orthoProj.y;
-		z1 -= _orthoProj.near;
-		z2 -= _orthoProj.near;
+	vec3_multMat(v1, camMat);
+	vec3_multMat(v2, camMat);
 	
-		// Normalize the coordinates
-		x1 /= _orthoProj.w;
-		x2 /= _orthoProj.w;
-		y1 /= _orthoProj.h;
-		y2 /= _orthoProj.h;
-		z1 /= (_orthoProj.far - _orthoProj.near);
-		z2 /= (_orthoProj.far - _orthoProj.near);
-		
-	} else if (_projMode == 2) {
-		// Normalize the coordinates
-		x1 = x1 / (_perspProj.hFovTan * fabs(z1)) * 0.5f + 0.5f;
-		x2 = x2 / (_perspProj.hFovTan * fabs(z2)) * 0.5f + 0.5f;
-		y1 = y1 / (_perspProj.vFovTan * fabs(z1)) * 0.5f + 0.5f;
-		y2 = y2 / (_perspProj.vFovTan * fabs(z2)) * 0.5f + 0.5f;
-		z1 = (z1 - _perspProj.near) / (_perspProj.far - _perspProj.near);
-		z2 = (z2 - _perspProj.near) / (_perspProj.far - _perspProj.near);
-	}
+	printf("bV1: %f, %f, %f\n", v1[0], v1[1], v1[2]);
+	//printf("bV2: %f, %f, %f\n", v2[0], v2[1], v2[2]);
+	
+	// Apply the projection
+	vec3_multMat(v1, projMat);
+	vec3_multMat(v2, projMat);
+	
+	printf("aV1: %f, %f, %f\n", v1[0], v1[1], v1[2]);
+	//printf("aV2: %f, %f, %f\n\n", v2[0], v2[1], v2[2]);
+	
 	
 	// Cull the line if it's clearly out of the planes
-	if ((x1 < 0.0f && x2 < 0.0f) ||
-	    (x1 > 1.0f && x2 > 1.0f) ||
-	    (y1 < 0.0f && y2 < 0.0f) ||
-	    (y1 > 1.0f && y2 > 1.0f) ||
-	    (z1 < 0.0f && z2 < 0.0f) ||
-	    (z1 > 1.0f && z2 > 1.0f))
+	if ((v1[0] < 0.0f && v2[0] < 0.0f) ||
+	    (v1[0] > 1.0f && v2[0] > 1.0f) ||
+	    (v1[1] < 0.0f && v2[1] < 0.0f) ||
+	    (v1[1] > 1.0f && v2[1] > 1.0f) ||
+	    (v1[2] < 0.0f && v2[2] < 0.0f) ||
+	    (v1[2] > 1.0f && v2[2] > 1.0f))
 		return;
+		
+		
+	// Move some values around for convenience
+	z1 = v1[2];
+	z2 = v2[2];
+	
 	
 	// Convert coords to pixels
-	px1 = (int)floor(x1 * (float)_screenWidth);
-	py1 = (int)floor(y1 * (float)_screenHeight);
-	px2 = (int)floor(x2 * (float)_screenWidth);
-	py2 = (int)floor(y2 * (float)_screenHeight);
+	px1 = (int)floor(v1[0] * (float)_screenWidth);
+	py1 = (int)floor(v1[1] * (float)_screenHeight);
+	px2 = (int)floor(v2[0] * (float)_screenWidth);
+	py2 = (int)floor(v2[1] * (float)_screenHeight);
+	
 	
 	// Render vertical line
 	if (px1 == px2) {
@@ -178,6 +137,7 @@ void drawLine(float x1, float y1, float z1,
 		return;
 	}
 		
+		
 	// Render horizontal line
 	if (py1 == py2) {
 	
@@ -205,6 +165,7 @@ void drawLine(float x1, float y1, float z1,
 			
 		return;
 	}
+	
 	
 	// Render horizontal-ish line
 	if (abs(px2 - px1) > abs(py2 - py1)) {
@@ -241,6 +202,7 @@ void drawLine(float x1, float y1, float z1,
 		
 		return;
 	}
+	
 	
 	// Render vertical-ish line
 	
@@ -283,73 +245,30 @@ void drawCube(float x, float y, float z,
               float rx, float ry)
 {
 	float vert[8][3];
-	float xCosTheta, xSinTheta;
-	float yCosTheta, ySinTheta;
-	float tmpX, tmpY, tmpZ;
+	float modelMat[16];
 	int i;
 
 	// Half the size length
 	s /= 2;
 	
 	// Calculate the cube vertices (no translation)
-	vert[0][0] = -s;
-	vert[0][1] = -s;
-	vert[0][2] = -s;
+	vec3_set(vert[0], -s, -s, -s);
+	vec3_set(vert[1],  s, -s, -s);	
+	vec3_set(vert[2],  s, -s,  s);
+	vec3_set(vert[3], -s, -s,  s);
+	vec3_set(vert[4], -s,  s, -s);
+	vec3_set(vert[5],  s,  s, -s);
+	vec3_set(vert[6],  s,  s,  s);
+	vec3_set(vert[7], -s,  s,  s);
 	
-	vert[1][0] =  s;
-	vert[1][1] = -s;
-	vert[1][2] = -s;
+	// Construct a model matrix
+	mat4_rotationX(modelMat, rx);
+	mat4_rotateY(modelMat, ry);
+	mat4_translate(modelMat, x, y, z);
 	
-	vert[2][0] =  s;
-	vert[2][1] = -s;
-	vert[2][2] =  s;
-	
-	vert[3][0] = -s;
-	vert[3][1] = -s;
-	vert[3][2] =  s;
-	
-	vert[4][0] = -s;
-	vert[4][1] =  s;
-	vert[4][2] = -s;
-	
-	vert[5][0] =  s;
-	vert[5][1] =  s;
-	vert[5][2] = -s;
-	
-	vert[6][0] =  s;
-	vert[6][1] =  s;
-	vert[6][2] =  s;
-	
-	vert[7][0] = -s;
-	vert[7][1] =  s;
-	vert[7][2] =  s;
-	
-	// Rotate the vertices ry degrees on the y axis
-	yCosTheta = cos(ry * 3.141592654f / 180.0f);
-	ySinTheta = sin(ry * 3.141592654f / 180.0f);
-	for (i = 0; i < 8; i++) {
-		tmpX = vert[i][0];
-		tmpZ = vert[i][2];
-		vert[i][0] = tmpX * yCosTheta + tmpZ * ySinTheta;
-		vert[i][2] = tmpZ * yCosTheta - tmpX * ySinTheta;
-	}
-	
-	// Rotate the vertices rx degrees on the x axis
-	xCosTheta = cos(rx * 3.141592654f / 180.0f);
-	xSinTheta = sin(rx * 3.141592654f / 180.0f);
-	for (i = 0; i < 8; i++) {
-		tmpY = vert[i][1];
-		tmpZ = vert[i][2];
-		vert[i][1] = tmpY * xCosTheta - tmpZ * xSinTheta;
-		vert[i][2] = tmpY * xSinTheta + tmpZ * xCosTheta;
-	}
-	
-	// Translate the vertices
-	for (i = 0; i < 8; i++) {
-		vert[i][0] += x;
-		vert[i][1] += y;
-		vert[i][2] += z;
-	}
+	// Rotate/Translate the vertices
+	for (i = 0; i < 8; i++)
+		vec3_multMat(vert[i], modelMat);
 	
 	// Draw the bottom square
 	drawLine(vert[0][0], vert[0][1], vert[0][2], 

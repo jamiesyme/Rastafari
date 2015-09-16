@@ -2,46 +2,57 @@
 #include "window.h"
 #include "screen.h"
 #include "graphics.h"
+#include "vec3.h"
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <time.h>
 
 
-#define CUBE_NUM 50
-int cubes[CUBE_NUM * 3];
+#define CUBE_NUM 1
+float cubes[CUBE_NUM * 3];
+
+
+float genRand() {
+	return (float)rand() / (float)RAND_MAX;
+}
 
 
 int main()
 {
 	int frameCount;
 	int lastTicks;
-	int i, j;
-	float posZ;
-	float rotX, rotY;
+	int i;
+	float pos[3];
+	float rot[3];
 	float deltaTime;
 	
-	// Setup the cubes
+	// Prepare the cubes
 	//srand(13);
 	for (i = 0; i < CUBE_NUM; i++) {
-		j = 5 + (rand() % 95);
-		cubes[i * 3 + 2] = 10 + j;
-		cubes[i * 3 + 0] = rand() % j - j / 2;
-		cubes[i * 3 + 1] = rand() % j - j / 2;
+		cubes[i * 3 + 2] = 5.0f + genRand() * 95.0f;
+		cubes[i * 3 + 0] = (genRand() - 0.5f) * cubes[i * 3 + 2];
+		cubes[i * 3 + 1] = (genRand() - 0.5f) * cubes[i * 3 + 2];
 	}
+	cubes[0] = 0.0f;
+	cubes[1] = 0.0f;
+	cubes[2] = 0.0f;
 	
 	// Prepare the canvas
 	openWindow(800, 600);
 	initScreen(800, 600);
-	//setOrtho(-40, -30, 80, 60, 0.0f, 100.0f);
-	setPersp(55.0f, 0.5f, 500.0f);
+	//setOrtho(80, 60, 0.0f, 100.0f);
+	setPersp(60.0f, 0.5f, 100.0f);
 	loadIdentity();
 	
+	// Prepare the camera
+	vec3_set(rot, 45.0f, 45.0f, 0.0f);
+	//vec3_set(pos, -40.0f, -30.0f, -10.0f);
+	vec3_set(pos, 0.0f, 0.0f, -10.0f);
+	
 	lastTicks = SDL_GetTicks();
-	rotX = 0.f;
-	rotY = 0.f;
-	posZ = 0.0f;
 	frameCount = 0;
-	while (SDL_GetTicks() < 10000) {
+	/*while (SDL_GetTicks() < 4000)*/ {
 	
 		// Timing
 		deltaTime = (float)(SDL_GetTicks() - lastTicks) / 1000.0f;
@@ -49,9 +60,9 @@ int main()
 	
 		// Translate
 		loadIdentity();
-		translate(0.0f, 0.0f, posZ);
-		posZ += deltaTime * 5.0f;
-	
+		translate(pos[0], pos[1], pos[2]);
+		pos[2] -= deltaTime * 5.0f;
+		
 		// Draw
 		clearScreen();
 		for (i = 0; i < CUBE_NUM; i++)
@@ -59,12 +70,12 @@ int main()
 			         cubes[i * 3 + 1], 
 			         cubes[i * 3 + 2], 
 				       3, 
-				       rotX, rotY);
+				       rot[0], rot[1]);
 		renderScreen();
 		
 		// Rotate		
-		rotX -= deltaTime * 5.0f;
-		rotY -= deltaTime * 30.0f;
+		//rotX -= deltaTime * 5.0f;
+		//rotY -= deltaTime * 30.0f;
 		
 		frameCount++;
 	}

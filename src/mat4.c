@@ -30,19 +30,32 @@ void mat4_identity(mat4_t mat)
 }
 
 
-void mat4_perspective(mat4_t mat, float fov, float near, float far)
+void mat4_perspective(mat4_t mat, float fov, float aspect, float n, float f)
 {
+	float tanFov = tan(fov * PI / 180.0f / 2.0f);
+	
 	mat4_identity(mat);
+	mat[0]  = 1.0f / tanFov;
+	mat[5]  = 1.0f / (tanFov * aspect);
+	mat[10] = 1.0f / (f - n);
+	mat[11] = (-n) * mat[10];
+	
+	//mat[0]  = 1 / (ar * tanFov);
+	//mat[5]  = 1 / tanFov;
+	//mat[10] = far / (far - near);
+	//mat[11] = 1.0f;
+	//mat[14] = -far * near / (far - near);
+	//mat[15] = 0.0f;
 }
 
 
-void mat4_ortho(mat4_t mat, float w, float h, float near, float far)
+void mat4_ortho(mat4_t mat, float w, float h, float n, float f)
 {
 	mat4_identity(mat);
-	mat[0]  = 2 / w;
-	mat[5]  = 2 / h;
-	mat[10] = 1 / (f - n);
-	mat[11] = (-n) / (f - n);
+	mat[0]  = 1.0f / w;
+	mat[5]  = 1.0f / h;
+	mat[10] = 1.0f / (f - n);
+	mat[11] = (-n) * mat[10];
 }
 
 

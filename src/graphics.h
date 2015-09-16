@@ -3,7 +3,7 @@
 
 void setOrtho(float w, float h, float near, float far);
 
-void setPersp(float vFov, float near, float far);
+void setPersp(float hFov, float near, float far);
 
 void loadIdentity();
 
